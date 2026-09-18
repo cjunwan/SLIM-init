@@ -1,0 +1,130 @@
+%YAML:1.0
+
+# ---------------------------------------------------------------------------
+# Dataset (EuRoC / ASL format)
+#   <data_path>/cam0/data.csv, <data_path>/cam0/data/*.png
+#   <data_path>/imu0/data.csv
+#   <data_path>/state_groundtruth_estimate0/data.csv
+# ---------------------------------------------------------------------------
+dataset_type: "euroc"
+data_path: "/datasets/EuRoC/MH_01_easy/mav0/"
+camera_num: 1
+camera_name: "cam0"
+imu_path: "imu0"
+has_ground_truth: 1
+ground_truth_path: "state_groundtruth_estimate0"
+camera_freq: 20
+imu_freq: 200
+
+# Result files are written to <output_path>/slim_init_<output_tag>.txt.
+# A relative path is resolved against the directory of this config file.
+output_path: "../result"
+
+# ---------------------------------------------------------------------------
+# Camera intrinsics (EuRoC cam0)
+# ---------------------------------------------------------------------------
+model_type: PINHOLE
+image_width: 752
+image_height: 480
+distortion_parameters:
+  k1: -0.28340811
+  k2: 0.07395907
+  p1: 0.00019359
+  p2: 1.76187114e-05
+projection_parameters:
+  fx: 458.654
+  fy: 457.296
+  cx: 367.215
+  cy: 248.375
+
+# ---------------------------------------------------------------------------
+# Camera-IMU extrinsics
+#   estimate_extrinsic: 0  use the values below as-is (only mode used here)
+# ---------------------------------------------------------------------------
+estimate_extrinsic: 0
+# Rotation from camera frame to imu frame, imu^R_cam
+extrinsicRotation: !!opencv-matrix
+  rows: 3
+  cols: 3
+  dt: d
+  data: [0.0148655429818, -0.999880929698, 0.00414029679422,
+         0.999557249008, 0.0149672133247, 0.025715529948,
+         -0.0257744366974, 0.00375618835797, 0.999660727178]
+# Translation from camera frame to imu frame, imu^T_cam
+extrinsicTranslation: !!opencv-matrix
+  rows: 3
+  cols: 1
+  dt: d
+  data: [-0.0216401454975,-0.064676986768, 0.00981073058949]
+
+# ---------------------------------------------------------------------------
+# Point feature tracker
+# ---------------------------------------------------------------------------
+max_cnt: 150            # max number of tracked features
+min_dist: 30            # min pixel distance between two features
+freq: 10                # tracking publish frequency (Hz); 0 = same as image rate
+F_threshold: 0.5        # RANSAC threshold (pixel)
+show_track: 1           # 1: show tracked points, lines and vanishing points in an OpenCV window
+equalize: 1             # 1: histogram equalization for dark / bright images
+fisheye: 0              # 1: apply a circular fisheye mask
+
+# ---------------------------------------------------------------------------
+# Line feature tracker (EdgeDrawing lines, tracked with a gyro-predicted rotation)
+# ---------------------------------------------------------------------------
+line_max_cnt: 200               # keep only the top-K longest lines per frame
+line_min_length: 50.0           # discard shorter segments (pixels)
+line_nms_dist: 50.0             # near-duplicate suppression: midpoint distance (pixels)
+line_nms_angle_deg: 15.0        # near-duplicate suppression: angle threshold (degrees)
+line_disable_filtering: 1       # 1: skip the NMS line filtering above
+line_gradient_threshold: 36     # EdgeDrawing gradient threshold (lower = more edges)
+
+line_match_max_dist: 10.0       # max perpendicular distance for line matching (pixels)
+line_match_max_angle: 5.0       # max angle difference for line matching (degrees)
+line_match_min_overlap: 0.5     # min overlap ratio for line matching (0~1)
+
+# ---------------------------------------------------------------------------
+# Line and vanishing-point constraints in the initialization
+# ---------------------------------------------------------------------------
+vp_use_residual: 1              # 1: vanishing-point consistency residual in gyro bias estimation (step 1)
+line_residual_weight: 1         # overall weight of line residuals against point residuals
+line_use_normal_residual: 1     # 1: line normal residual in the linear alignment (step 2)
+line_normal_weight: 0.3         # weight of the line normal residual
+line_use_epipolar_residual: 1   # 1: line epipolar residual in the linear alignment (step 2)
+line_epipolar_weight: 0.5       # weight of the line epipolar residual
+line_min_used_for_alignment: 2  # min lines per frame pair to enable line constraints
+
+# Selection of lines for the epipolar residual
+epipolar_min_track_count: 4
+epipolar_min_pair_coverage: 0.50
+epipolar_min_match_quality: 0.35
+epipolar_min_obs_quality: 0.40
+epipolar_min_score: 0.60
+epipolar_max_lines_global: 4    # max selected epipolar lines per window (0 disables)
+
+# Window gating on IMU excitation
+acc_check_enable: 1                 # 1: skip windows whose accelerometer excitation is too low
+acc_check_max_near_g_segments: 1    # max number of pair-acceleration segments within 0.5% of |g|
+
+# ---------------------------------------------------------------------------
+# Solver
+# ---------------------------------------------------------------------------
+max_solver_time: 0.04       # max solver time per iteration (s)
+max_num_iterations: 8       # max solver iterations
+keyframe_parallax: 100.0    # keyframe selection threshold (pixel)
+
+# ---------------------------------------------------------------------------
+# IMU noise (EuRoC)
+# ---------------------------------------------------------------------------
+acc_n: 2.0000e-4          # accelerometer measurement noise standard deviation
+gyr_n: 1.7e-4             # gyroscope measurement noise standard deviation
+acc_w: 5.0000e-03         # accelerometer bias random walk noise standard deviation
+gyr_w: 1.9393e-05         # gyroscope bias random walk noise standard deviation
+g_norm: 9.81007           # gravity magnitude
+
+# ---------------------------------------------------------------------------
+# Camera-IMU time offset and rolling shutter
+# ---------------------------------------------------------------------------
+estimate_td: 0            # 1: estimate the camera-IMU time offset online
+td: 0.0                   # initial time offset (s): image clock + td = IMU clock
+rolling_shutter: 0        # 1: rolling shutter camera
+rolling_shutter_tr: 0     # rolling shutter readout time per frame (s)
